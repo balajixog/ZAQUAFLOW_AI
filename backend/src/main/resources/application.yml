@@ -1,0 +1,18 @@
+server:
+  port: 8080
+spring:
+  sql:
+    init:
+      mode: always
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/zaquaflow_db}
+    username: ${SPRING_DATASOURCE_USERNAME:zaquaflow}
+    password: ${SPRING_DATASOURCE_PASSWORD:zaquaflow}
+zaquaflow:
+  mqtt:
+    host: ${MQTT_HOST:localhost}
+    port: ${MQTT_PORT:1883}
+    username: ${MQTT_USERNAME:}
+    password: ${MQTT_PASSWORD:}
+  internal-api-key: ${INTERNAL_API_KEY:local-dev-key}
+  device-id: ${DEVICE_ID:ZAQ-ESP32-001}

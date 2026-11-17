@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports: ["127.0.0.1:5433:5432"]
+    volumes: [ "pgdata:/var/lib/postgresql/data", "./backend/db/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro" ]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports: ["1883:1883"]
+    volumes: ["./infrastructure/mosquitto:/mosquitto/config", "mqttdata:/mosquitto/data"]
+  backend:
+    build: ./backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      MQTT_USERNAME: ${MQTT_USERNAME}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
+      INTERNAL_API_KEY: ${BACKEND_INTERNAL_API_KEY}
+      DEVICE_ID: ${DEVICE_ID}
+    ports: ["8080:8080"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      mosquitto: { condition: service_started }
+  ai-agent:
+    build: ./ai-agent
+    environment:
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
+      BACKEND_BASE_URL: http://backend:8080
+      BACKEND_INTERNAL_API_KEY: ${BACKEND_INTERNAL_API_KEY}
+      DEVICE_ID: ${DEVICE_ID}
+    ports: ["8000:8000"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on: [backend]
+  frontend:
+    build: ./frontend
+    ports: ["5173:80"]
+    depends_on: [backend, ai-agent]
+volumes:
+  pgdata:
+  mqttdata:
